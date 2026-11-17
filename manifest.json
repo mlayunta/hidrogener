@@ -1,0 +1,41 @@
+{
+  "id": "./",
+  "name": "H₂ Verde · Prefactibilidad profesional",
+  "short_name": "H₂ Verde",
+  "description": "Modelo de prefactibilidad con pruebas de regresión, trazabilidad y expediente reproducible. Autor: Miguel Ángel Layunta López.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef5f1",
+  "theme_color": "#075e49",
+  "categories": [
+    "productivity",
+    "education",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Resultados",
+      "url": "./#resultados"
+    },
+    {
+      "name": "Calidad y trazabilidad",
+      "url": "./#calidad"
+    },
+    {
+      "name": "Proyectos",
+      "url": "./#proyectos"
+    }
+  ]
+}

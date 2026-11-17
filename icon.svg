@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="512" height="512" viewBox="0 0 512 512"
+     role="img" aria-label="Hidrógeno renovable">
+  <rect width="512" height="512" rx="100" fill="#075e49"/>
+  <circle cx="256" cy="256" r="175" fill="#e9f7ee"/>
+  <path d="M275 130 Q375 100 389 198 Q311 204 275 130"
+        fill="#34ad70"/>
+  <path d="M284 184 Q326 158 363 145"
+        fill="none" stroke="#075e49" stroke-width="10"
+        stroke-linecap="round"/>
+  <path d="M164 186 V322 M270 186 V322 M164 254 H270"
+        fill="none" stroke="#075e49" stroke-width="27"
+        stroke-linecap="round"/>
+  <path d="M305 278 Q351 242 361 278 Q364 292 346 307
+           L308 341 H365"
+        fill="none" stroke="#11956e" stroke-width="15"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

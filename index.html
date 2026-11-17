@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#075e49">
+<meta name="author" content="Miguel Ángel Layunta López">
+<meta name="description" content="Prefactibilidad de hidrógeno renovable con balances eléctricos y economía trazable.">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<title>H₂ Verde · Prefactibilidad</title>
+<style>
+:root{color-scheme:light;--green:#075e49;--ink:#17372d;--muted:#567368;--line:#cee0d6;--bg:#eef5f1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+header{background:var(--green);color:white;padding:22px}
+header h1{margin:0;font-size:1.7rem}
+header p{margin:6px 0}
+main{max-width:1250px;margin:auto;padding:16px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+button,input,select{font:inherit;border:1px solid #aac6b8;border-radius:7px;padding:8px}
+button{cursor:pointer;background:white;color:var(--green)}
+button.primary{background:var(--green);color:white}
+button:disabled{opacity:.55;cursor:wait}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #84cbae}
+input,select{width:100%;background:white;color:var(--ink)}
+nav button[aria-selected=true]{background:var(--green);color:white}
+.panel[hidden]{display:none}
+.card{background:white;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+h2{font-size:1.2rem;margin:0 0 10px}
+h3{font-size:1rem}
+p{margin:8px 0}
+.note{padding:12px;background:#fff4dc;border:1px solid #e7cf95;border-radius:8px;margin:12px 0}
+.good{background:#e4f6ec;border-color:#a2d5b6}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:12px}
+label{display:block;font-size:.87rem;font-weight:650}
+label input,label select{margin-top:5px}
+small{display:block;color:var(--muted);font-weight:400}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+.toolbar input,.toolbar select{width:auto;max-width:100%;flex:1 1 220px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.metric{background:#e9f5ee;border-left:4px solid #11956e;padding:12px;border-radius:7px}
+.metric span{display:block;font-size:.78rem;color:var(--muted)}
+.metric strong{display:block;font-size:1.15rem}
+.scroll{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+th{background:#f1f8f4}
+svg.chart{width:100%;height:auto;border:1px solid var(--line);background:#fbfdfc}
+#status{padding:10px 0;min-height:42px;color:var(--muted)}
+#status.error{color:#a32020;font-weight:650}
+details summary{cursor:pointer;font-weight:700}
+footer{padding:22px;text-align:center;color:var(--muted);font-size:.85rem}
+pre{white-space:pre-wrap;overflow-wrap:anywhere}
+@media print{
+body{background:white;font-size:10pt}
+nav,.toolbar,#status,.no-print{display:none!important}
+.panel{display:none!important}
+#panel-informe{display:block!important}
+.card{break-inside:avoid}
+header{background:white;color:black;border-bottom:1px solid #aaa}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>H₂ Verde · Prefactibilidad</h1>
+<p>Miguel Ángel Layunta López · Motor consolidado JS · versión 3.1</p>
+<p id="pwaStatus" aria-live="polite">PWA: preparando disponibilidad local.</p>
+</header>
+<main>
+<div class="note no-print">
+<strong>Alcance:</strong> electrólisis de baja temperatura mediante consumo específico declarado.
+Compresión isotérmica aproximada. Batería con despacho por reglas, no optimización.
+No modela SOEC, portadores, licuefacción ni certificación RFNBO.
+</div>
+<div id="status" role="status" aria-live="polite"></div>
+<nav role="tablist" aria-label="Secciones">
+<button role="tab" data-tab="datos" aria-selected="true">Datos</button>
+<button role="tab" data-tab="resultados" aria-selected="false">Resultados</button>
+<button role="tab" data-tab="perfiles" aria-selected="false">Perfiles</button>
+<button role="tab" data-tab="proyectos" aria-selected="false">Proyectos</button>
+<button role="tab" data-tab="informe" aria-selected="false">Informe</button>
+<button role="tab" data-tab="modelo" aria-selected="false">Modelo y pruebas</button>
+</nav>
+
+<section id="panel-datos" class="panel">
+<form id="form">
+<div id="fields"></div>
+<div class="toolbar">
+<button class="primary" type="submit">Calcular y actualizar resultados</button>
+<button id="defaults" type="button">Nuevo con valores de partida</button>
+</div>
+</form>
+</section>
+
+<section id="panel-resultados" class="panel" hidden>
+<div class="card"><h2>Primer año y economía de la vida útil</h2><div id="kpis" class="metrics"></div></div>
+<div class="card"><h2>Balance eléctrico del primer año</h2><div id="balance" class="scroll"></div></div>
+<div class="card">
+<h2>Producción mensual del primer año</h2>
+<svg id="monthChart" class="chart" viewBox="0 0 1000 300" role="img" aria-label="Producción mensual"></svg>
+</div>
+<div class="card"><h2>Evaluación anual</h2><div id="annual" class="scroll"></div></div>
+<div class="note">
+Las emisiones son un cálculo parcial de electricidad y una aportación adicional declarada.
+No constituyen una evaluación de ciclo de vida ni una comprobación RFNBO.
+</div>
+</section>
+
+<section id="panel-perfiles" class="panel" hidden>
+<div class="card">
+<h2>Series horarias con unidades explícitas</h2>
+<p>El año del modelo contiene exactamente 8.760 intervalos de una hora.
+No se interpolan archivos incompletos, no se recortan años bisiestos y no se deducen unidades por magnitud.</p>
+<p>CSV con separador punto y coma, cabecera obligatoria y columna
+<code>hora</code> de 0 a 8759, en orden y sin duplicados.</p>
+<p>Columnas opcionales: <code>solar</code>, <code>eolica</code>,
+<code>precio_eur_mwh</code>. Debe existir al menos una.
+Solar y eólica son factores de potencia entre 0 y 1, antes del rendimiento eléctrico común declarado.</p>
+<p>Los precios pueden ser negativos. Una columna ausente utiliza el perfil sintético o el precio plano del formulario.
+Importar reemplaza el conjunto de series anterior.</p>
+<pre>hora;solar;eolica;precio_eur_mwh
+0;0;0,35;62
+1;0;0,28;58</pre>
+<p>El ejemplo anterior muestra solo el formato: un archivo válido debe incluir las 8.760 filas.</p>
+<div class="toolbar">
+<button id="importSeries" type="button">Importar CSV</button>
+<button id="exportSeries" type="button">Exportar series activas</button>
+<button id="clearSeries" type="button">Usar perfiles sintéticos</button>
+</div>
+<input id="seriesFile" type="file" accept=".csv,text/csv" hidden>
+<div id="seriesInfo"></div>
+</div>
+</section>
+
+<section id="panel-proyectos" class="panel" hidden>
+<div class="card">
+<h2>Proyectos y copias de seguridad</h2>
+<p>Los proyectos guardados incluyen parámetros y series importadas.
+El almacenamiento del navegador no es una copia de seguridad.</p>
+<div class="toolbar">
+<select id="projectList" aria-label="Proyecto guardado"></select>
+<button id="saveProject" type="button">Guardar proyecto</button>
+<button id="loadProject" type="button">Cargar seleccionado</button>
+<button id="deleteProject" type="button">Eliminar seleccionado</button>
+</div>
+<div class="toolbar">
+<button id="exportProject" type="button">Exportar proyecto JSON</button>
+<button id="importProject" type="button">Importar proyecto JSON</button>
+</div>
+<input id="projectFile" type="file" accept=".json,application/json" hidden>
+</div>
+</section>
+
+<section id="panel-informe" class="panel" hidden>
+<div class="toolbar">
+<button id="print" type="button">Imprimir / guardar PDF</button>
+<button id="hourlyCsv" type="button">CSV horario</button>
+<button id="reportHtml" type="button">Informe HTML</button>
+</div>
+<div id="report"></div>
+</section>
+
+<section id="panel-modelo" class="panel" hidden>
+<div class="card">
+<h2>Convenciones y límites</h2>
+<ul>
+<li>Potencias internas en kW; energía de cada intervalo horario en kWh.</li>
+<li>Consumo específico DC del stack introducido por el usuario. No se infiere una curva electroquímica de fabricante.</li>
+<li>La degradación aumenta ese consumo según las horas efectivas de operación.</li>
+<li>Reposición física al alcanzar la vida del stack; coste registrado al cierre del año correspondiente.</li>
+<li>Compresión de gas ideal isotérmica con rendimiento global declarado. No calcula temperaturas de descarga ni propiedades reales a alta presión.</li>
+<li>Batería AC: carga exclusivamente renovable; no permite cargar desde red. Empieza sin energía utilizable y conserva su inventario entre años.</li>
+<li>El inventario final no tiene ingreso residual. Su variación aparece en el balance.</li>
+<li>La batería no tiene envejecimiento físico modelado; su vida económica permite reposiciones completas.</li>
+<li>No se contabiliza calor útil ni se presenta un balance térmico o exergético.</li>
+<li>No se modelan tiempos de arranque, restricciones de permanencia ni rampas subhorarias.</li>
+<li>El CAPEX inicial se registra una sola vez en el año cero. Flujos anuales nominales descontados.</li>
+<li>El crédito por O₂ utiliza H₂ producido, no H₂ entregado. Aprovechamiento inicial: cero.</li>
+<li>Costes de planta declarados deben incluir la infraestructura de agua, compresión y oxígeno utilizada.</li>
+<li>La generación sintética es una hipótesis, no un registro medido. Una comparación predictiva exige recurso y operación medidos compatibles.</li>
+</ul>
+</div>
+<div class="card">
+<h2>Comprobaciones internas</h2>
+<p>Comprueban un caso analítico y el cierre eléctrico. No equivalen a validación experimental ni pruebas de compatibilidad en todos los navegadores.</p>
+<button id="tests" type="button">Ejecutar comprobaciones</button>
+<pre id="testOutput"></pre>
+</div>
+<div class="card"><h2>Parámetros del resultado calculado</h2><pre id="audit"></pre></div>
+</section>
+</main>
+<footer>Herramienta preliminar. No sustituye diseño de detalle, garantía de rendimiento ni certificación.</footer>
+<script>
+"use strict";
+const VERSION = "3.1";
+const HOURS = 8760;
+const LHV = 33.33;
+const O2_RATIO = 31.9988 / (2 * 2.01588);
+const STORAGE_KEY = "h2verde-consolidado-v3";
+const $ = id => document.getElementById(id);
+const finite = Number.isFinite;
+const format = (x,d=2) => finite(x)
+  ? new Intl.NumberFormat("es-ES",{maximumFractionDigits:d,minimumFractionDigits:d}).format(x)
+  : "No definido";
+const escapeHTML = x => String(x).replace(/[&<>"']/g,c=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+const GROUPS = [
+["Proyecto",[
+["name","Nombre","text","Planta de referencia"],
+["author","Responsable","text","Miguel Ángel Layunta López"],
+["years","Vida económica","number",20,1,40,"años"],
+["lat","Latitud","number",40,-70,70,"°"]
+]],
+["Renovables y conexión eléctrica",[
+["pv","Potencia FV","number",6000,0,10000000,"kWp"],
+["wind","Potencia eólica","number",0,0,10000000,"kW"],
+["solarCF","Factor solar sintético antes del convertidor","number",22,0,50,"%"],
+["windCF","Factor eólico sintético antes del convertidor","number",35,0,90,"%"],
+["inv","Rendimiento eléctrico común del recurso","number",97,50,100,"%"],
+["gridMode","Importación de red","select","off",[
+["off","No permitida"],["minimum","Completar carga mínima"],["nominal","Completar potencia nominal"]
+]],
+["gridPrice","Precio plano de red","number",90,-1000,10000,"€/MWh"],
+["renewPrice","Coste marginal renovable adicional","number",0,0,1000,"€/MWh"],
+["gridCI","Intensidad de emisiones de red","number",190,0,2000,"gCO₂eq/kWh"],
+["renewCI","Intensidad renovable declarada","number",0,0,2000,"gCO₂eq/kWh"]
+]],
+["Stack y entrega",[
+["stack","Potencia nominal DC","number",2000,1,10000000,"kW"],
+["sec","Consumo específico DC inicial","number",53,40,150,"kWh/kg"],
+["minimum","Carga mínima","number",10,0,100,"% nominal"],
+["rect","Rendimiento rectificador","number",96,50,100,"%"],
+["bop","Auxiliares DC proporcionales","number",6,0,50,"% potencia stack"],
+["deg","Incremento del consumo por envejecimiento","number",0.05,0,5,"% por 1.000 h operativas"],
+["stackLife","Vida operativa del stack","number",70000,100,500000,"h"],
+["replacement","Coste de reposición del stack","number",1200000,0,1000000000,"€"],
+["pIn","Presión de salida del stack","number",30,1,1000,"bar absolutos"],
+["pOut","Presión de entrega","number",350,1,1000,"bar absolutos"],
+["compT","Temperatura de compresión isotérmica","number",35,0,100,"°C"],
+["compEff","Rendimiento global de compresión","number",65,20,100,"%"],
+["loss","Pérdida de H₂ hasta entrega","number",1,0,50,"%"],
+["endEff","Fracción del PCI convertida en servicio útil","number",85,1,100,"%"],
+["otherCI","Emisiones adicionales declaradas","number",0,0,100,"kgCO₂eq/kg H₂ producido"]
+]],
+["Agua y oxígeno",[
+["water","Agua de proceso","number",12,9,100,"L/kg H₂"],
+["waterPrice","Precio del agua","number",1.5,0,100,"€/m³"],
+["waterEnergy","Electricidad de tratamiento","number",1,0,50,"kWh/m³"],
+["o2Capture","Oxígeno comercializado","number",0,0,100,"% producido"],
+["o2Price","Precio del oxígeno comercializado","number",80,0,2000,"€/t"],
+["o2Energy","Acondicionamiento de O₂ comercializado","number",0.1,0,10,"kWh/kg O₂"],
+["o2Cost","Coste variable no eléctrico de O₂","number",20,0,2000,"€/t comercializada"]
+]],
+["Batería AC",[
+["battery","Usar batería","checkbox",false],
+["batCap","Capacidad nominal","number",20,0,100000,"MWh"],
+["batPower","Potencia de carga y descarga","number",5,0,100000,"MW"],
+["batEff","Rendimiento ida y vuelta","number",90,50,100,"%"],
+["socMin","SOC mínimo","number",10,0,99,"%"],
+["socMax","SOC máximo","number",90,1,100,"%"],
+["batCapex","Coste instalado","number",350,0,5000,"€/kWh nominal"],
+["batOpex","OPEX fijo de batería","number",1.5,0,20,"% CAPEX/año"],
+["batLife","Vida económica de batería","number",12,1,40,"años"]
+]],
+["Economía nominal",[
+["capRenew","CAPEX renovable","number",3600000,0,10000000000,"€"],
+["capStack","CAPEX stack y BoP","number",2400000,0,10000000000,"€"],
+["capPlant","CAPEX resto de planta","number",2100000,0,10000000000,"€"],
+["fixed","OPEX fijo, sin batería","number",180000,0,1000000000,"€/año"],
+["rate","Tasa nominal de descuento","number",8,0,40,"%"],
+["inflation","Escalado de OPEX y ventas","number",2,-5,20,"%/año"],
+["elecEsc","Escalado de precios eléctricos","number",1.5,-10,20,"%/año"],
+["h2Price","Precio inicial de venta","number",5.5,0,1000,"€/kg"]
+]]
+];
+const SPEC = GROUPS.flatMap(g=>g[1]);
+const DEFAULTS = Object.fromEntries(SPEC.map(f=>[f[0],f[3]]));
+let config = {...DEFAULTS};
+let imported = null;
+let result = null;
+let currentProjectId = null;
+let calculating = false;
+
+function status(text,error=false){
+  $("status").textContent=text;
+  $("status").className=error?"error":"";
+}
+function invalidate(){
+  result=null;
+  ["kpis","balance","annual","report","audit","monthChart"].forEach(id=>$(id).innerHTML="");
+  status("Hay cambios pendientes. Pulse «Calcular».");
+}
+function validateConfig(c){
+  if(!c || typeof c!=="object" || Array.isArray(c)) throw Error("Parámetros inválidos.");
+  const out={};
+  for(const f of SPEC){
+    const [key,label,type,def,min,max]=f;
+    const v=c[key];
+    if(type==="number"){
+      if(typeof v!=="number" || !finite(v) || v<min || v>max)
+        throw Error(label+": valor fuera de rango.");
+      out[key]=v;
+    }else if(type==="checkbox"){
+      if(typeof v!=="boolean") throw Error(label+": debe ser booleano.");
+      out[key]=v;
+    }else if(type==="select"){
+      if(!f[4].some(o=>o[0]===v)) throw Error(label+": opción desconocida.");
+      out[key]=v;
+    }else{
+      if(typeof v!=="string" || !v.trim() || v.length>200)
+        throw Error(label+": texto vacío o demasiado largo.");
+      out[key]=v.trim();
+    }
+  }
+  for(const key of ["years","stackLife","batLife"]){
+    if(!Number.isInteger(out[key])) throw Error(key+": debe ser entero.");
+  }
+  if(out.battery && (out.batCap<=0 || out.batPower<=0 || out.socMax<=out.socMin))
+    throw Error("La batería necesita capacidad, potencia y límites de SOC válidos.");
+  return out;
+}
+function renderForm(){
+  $("fields").innerHTML=GROUPS.map(([title,fields])=>
+    '<details class="card" open><summary>'+escapeHTML(title)+'</summary><div class="fields">'+
+    fields.map(f=>{
+      const [key,label,type]=f,v=config[key];
+      const titleText=escapeHTML(label+(type==="number"?" ("+f[6]+")":""));
+      if(type==="select") return '<label for="f-'+key+'">'+titleText+
+        '<select id="f-'+key+'" data-key="'+key+'">'+f[4].map(o=>
+          '<option value="'+o[0]+'"'+(v===o[0]?" selected":"")+'>'+escapeHTML(o[1])+'</option>'
+        ).join("")+'</select></label>';
+      if(type==="checkbox") return '<label for="f-'+key+'">'+titleText+
+        '<input id="f-'+key+'" data-key="'+key+'" type="checkbox"'+(v?" checked":"")+'></label>';
+      return '<label for="f-'+key+'">'+titleText+'<input id="f-'+key+
+        '" data-key="'+key+'" type="'+type+'" value="'+escapeHTML(v)+
+        '" required'+(type==="number"?' min="'+f[4]+'" max="'+f[5]+'" step="any"':' maxlength="200"')+'></label>';
+    }).join("")+'</div></details>'
+  ).join("");
+}
+function readForm(){
+  const c={};
+  for(const f of SPEC){
+    const el=$("f-"+f[0]);
+    c[f[0]]=f[2]==="checkbox"?el.checked:f[2]==="number"?el.valueAsNumber:el.value;
+  }
+  return validateConfig(c);
+}
+function validateSeries(data){
+  if(data===null) return null;
+  if(!data || typeof data!=="object" || Array.isArray(data)) throw Error("Series inválidas.");
+  const out={name:typeof data.name==="string"?data.name.slice(0,200):"Importadas"};
+  let count=0;
+  for(const key of ["solar","wind","prices"]){
+    if(data[key]==null) continue;
+    if(!Array.isArray(data[key]) || data[key].length!==HOURS)
+      throw Error(key+": se requieren 8.760 valores.");
+    out[key]=data[key].map((v,i)=>{
+      if(typeof v!=="number" || !finite(v)) throw Error(key+": valor inválido en hora "+i);
+      if(key!=="prices" && (v<0 || v>1)) throw Error(key+": factor fuera de [0,1].");
+      if(key==="prices" && (v < -1000 || v > 10000)) throw Error("Precio fuera del rango declarado.");
+      return v;
+    });
+    count++;
+  }
+  if(!count) throw Error("No hay series reconocidas.");
+  return out;
+}
+function normalizeProfile(values,target){
+  const positive=values.reduce((n,v)=>n+(v>0?1:0),0)/values.length;
+  if(target===0) return new Float64Array(values.length);
+  if(target>positive+1e-12) throw Error("Factor solar imposible para las horas con recurso.");
+  let lo=0,hi=1;
+  const avg=k=>values.reduce((s,v)=>s+Math.min(1,v*k),0)/values.length;
+  while(avg(hi)<target && hi<1e12) hi*=2;
+  for(let i=0;i<70;i++){
+    const mid=(lo+hi)/2;
+    if(avg(mid)<target) lo=mid;else hi=mid;
+  }
+  return Float64Array.from(values,v=>Math.min(1,v*(lo+hi)/2));
+}
+function synthetic(c){
+  const solar=new Float64Array(HOURS),wind=new Float64Array(HOURS);
+  const lat=c.lat*Math.PI/180;
+  for(let h=0;h<HOURS;h++){
+    const day=Math.floor(h/24),hour=h%24+.5;
+    const dec=23.45*Math.PI/180*Math.sin(2*Math.PI*(284+day)/365);
+    const angle=(hour-12)*Math.PI/12;
+    const altitude=Math.sin(lat)*Math.sin(dec)+Math.cos(lat)*Math.cos(dec)*Math.cos(angle);
+    const weather=.65+.35*(.5+.5*Math.sin(day*1.73+Math.sin(day*.17)));
+    solar[h]=Math.max(0,altitude)*weather;
+    wind[h]=.12+.88*(.5+.5*Math.sin(h*.031+Math.sin(h*.002)*2));
+  }
+  return {
+    solar:normalizeProfile(solar,c.solarCF/100),
+    wind:normalizeProfile(wind,c.windCF/100)
+  };
+}
+function getProfiles(c,data){
+  const fallback=synthetic(c);
+  return {
+    solar:data?.solar?Float64Array.from(data.solar):fallback.solar,
+    wind:data?.wind?Float64Array.from(data.wind):fallback.wind,
+    prices:data?.prices?Float64Array.from(data.prices):new Float64Array(HOURS).fill(c.gridPrice),
+    description:data?"Series: "+data.name+"; columnas ausentes sintéticas/plana.":"Recurso sintético; precio plano."
+  };
+}
+function compression(c){
+  if(c.pOut<=c.pIn) return 0;
+  const specificR=8.314462618/.00201588;
+  return specificR*(c.compT+273.15)*Math.log(c.pOut/c.pIn)/(3.6e6*(c.compEff/100));
+}
+function annualSimulation(c,profiles,initialAge,initialSOC,keepHours){
+  const inv=c.inv/100,rect=c.rect/100,bop=c.bop/100;
+  const eta=Math.sqrt(c.batEff/100);
+  const capacity=c.battery?c.batCap*1000*(c.socMax-c.socMin)/100:0;
+  const batPower=c.battery?c.batPower*1000:0;
+  const compSpecific=compression(c);
+  const treatmentSpecific=c.water/1000*c.waterEnergy;
+  const oxygenSpecific=O2_RATIO*c.o2Capture/100*c.o2Energy;
+  let age=initialAge,soc=initialSOC;
+  const a={
+    renewable:0,grid:0,renewUsed:0,invLoss:0,curt:0,rectLoss:0,bop:0,
+    stack:0,comp:0,waterEnergy:0,o2Energy:0,batteryLoss:0,kg:0,
+    replacements:0,operating:0,priceCost:0,renewCost:0,emissionsG:0,
+    charged:0,discharged:0,socInitial:initialSOC,months:new Array(12).fill(0)
+  };
+  const H=keepHours?{
+    renewable:new Float64Array(HOURS),stack:new Float64Array(HOURS),
+    kg:new Float64Array(HOURS),grid:new Float64Array(HOURS),
+    plant:new Float64Array(HOURS),soc:new Float64Array(HOURS),
+    charge:new Float64Array(HOURS),discharge:new Float64Array(HOURS)
+  }:null;
+  const monthEnds=[744,1416,2160,2880,3624,4344,5088,5832,6552,7296,8016,8760];
+  let month=0;
+  for(let h=0;h<HOURS;h++){
+    if(age>=c.stackLife){
+      age=0;
+      a.replacements++;
+    }
+    const sec=c.sec*(1+c.deg/100*age/1000);
+    const coefficient=(1+bop)/rect+(compSpecific+treatmentSpecific+oxygenSpecific)/sec;
+    const raw=profiles.solar[h]*c.pv+profiles.wind[h]*c.wind;
+    const renewableAC=raw*inv;
+    const maxDischarge=Math.min(batPower,soc*eta);
+    const maxPlant=c.stack*coefficient;
+    const minPlant=maxPlant*c.minimum/100;
+    const available=renewableAC+maxDischarge;
+    let plant;
+    if(c.gridMode==="nominal") plant=maxPlant;
+    else if(c.gridMode==="minimum") plant=Math.min(maxPlant,Math.max(minPlant,available));
+    else{
+      plant=Math.min(maxPlant,available);
+      if(plant+1e-9<minPlant) plant=0;
+    }
+    const discharge=Math.min(Math.max(0,plant-renewableAC),maxDischarge);
+    const grid=Math.max(0,plant-renewableAC-discharge);
+    if(c.gridMode==="off" && grid>1e-7) throw Error("Importación no permitida.");
+    const charge=Math.min(
+      Math.max(0,renewableAC-plant),batPower,
+      Math.max(0,capacity-soc)/eta
+    );
+    const curt=Math.max(0,renewableAC-plant-charge);
+    const delta=charge*eta-discharge/eta;
+    const batteryLoss=charge*(1-eta)+discharge*(1/eta-1);
+    soc+=delta;
+    if(soc < -1e-7 || soc > capacity+1e-7) throw Error("SOC fuera de límites.");
+    soc=Math.max(0,Math.min(capacity,soc));
+    const stack=plant/coefficient;
+    const kg=stack/sec;
+    const bopEnergy=stack*bop;
+    const rectLoss=(stack+bopEnergy)/rect-stack-bopEnergy;
+    const compEnergy=kg*compSpecific;
+    const waterEnergy=kg*treatmentSpecific;
+    const o2Energy=kg*oxygenSpecific;
+    const renewableUsed=Math.min(renewableAC,plant)+charge;
+    const residual=raw+grid-
+      (raw-renewableAC+curt+rectLoss+bopEnergy+stack+
+       compEnergy+waterEnergy+o2Energy+batteryLoss+delta);
+    if(Math.abs(residual)>1e-7*Math.max(1,raw+grid))
+      throw Error("No cierra el balance en hora "+h);
+    if(stack>1e-8){age++;a.operating++;}
+    a.renewable+=raw;a.grid+=grid;a.renewUsed+=renewableUsed;
+    a.invLoss+=raw-renewableAC;a.curt+=curt;a.rectLoss+=rectLoss;
+    a.bop+=bopEnergy;a.stack+=stack;a.comp+=compEnergy;
+    a.waterEnergy+=waterEnergy;a.o2Energy+=o2Energy;a.batteryLoss+=batteryLoss;
+    a.kg+=kg;a.charged+=charge;a.discharged+=discharge;
+    a.priceCost+=grid*profiles.prices[h]/1000;
+    a.renewCost+=renewableUsed*c.renewPrice/1000;
+    a.emissionsG+=grid*c.gridCI+renewableUsed*c.renewCI;
+    while(h>=monthEnds[month]) month++;
+    a.months[month]+=kg;
+    if(H){
+      H.renewable[h]=raw;H.stack[h]=stack;H.kg[h]=kg;H.grid[h]=grid;
+      H.plant[h]=plant;H.soc[h]=c.battery?soc/(c.batCap*1000)*100+c.socMin:0;
+      H.charge[h]=charge;H.discharge[h]=discharge;
+    }
+  }
+  a.socFinal=soc;a.ageFinal=age;a.deltaSOC=soc-initialSOC;
+  a.delivered=a.kg*(1-c.loss/100);
+  a.useful=a.delivered*LHV*c.endEff/100;
+  a.waterM3=a.kg*c.water/1000;
+  a.o2Produced=a.kg*O2_RATIO;
+  a.o2Sold=a.o2Produced*c.o2Capture/100;
+  a.emissionsG+=a.kg*c.otherCI*1000;
+  a.ci=a.delivered>0?a.emissionsG/(a.delivered*LHV*3.6):NaN;
+  a.residual=a.renewable+a.grid-
+    (a.invLoss+a.curt+a.rectLoss+a.bop+a.stack+a.comp+
+     a.waterEnergy+a.o2Energy+a.batteryLoss+a.deltaSOC);
+  if(Math.abs(a.residual)>1e-7*Math.max(1,a.renewable+a.grid))
+    throw Error("No cierra el balance anual.");
+  a.H=H;
+  return a;
+}
+function npvAt(cashFlows,rate){
+  return cashFlows.reduce((s,v,i)=>s+v/Math.pow(1+rate,i),0);
+}
+function calculate(c,data){
+  c=validateConfig(c);
+  data=validateSeries(data);
+  const profiles=getProfiles(c,data);
+  const batteryCapex=c.battery?c.batCap*1000*c.batCapex:0;
+  const initialCapex=c.capRenew+c.capStack+c.capPlant+batteryCapex;
+  const rows=[],cashFlows=[-initialCapex];
+  let age=0,soc=0;
+  let npvCosts=initialCapex,npvKg=0,npvO2=0,npvRevenue=0,npvUseful=0;
+  for(let y=1;y<=c.years;y++){
+    const a=annualSimulation(c,profiles,age,soc,y===1);
+    age=a.ageFinal;soc=a.socFinal;
+    const infl=Math.pow(1+c.inflation/100,y-1);
+    const elecEsc=Math.pow(1+c.elecEsc/100,y-1);
+    const discount=Math.pow(1+c.rate/100,y);
+    const batteryReplace=c.battery && y>1 && (y-1)%c.batLife===0?batteryCapex*infl:0;
+    const replacements=a.replacements*c.replacement*infl+batteryReplace;
+    const fixed=(c.fixed+batteryCapex*c.batOpex/100)*infl;
+    const electricity=(a.priceCost+a.renewCost)*elecEsc;
+    const waterCost=a.waterM3*c.waterPrice*infl;
+    const oxygenCost=a.o2Sold/1000*c.o2Cost*infl;
+    const oxygenRevenue=a.o2Sold/1000*c.o2Price*infl;
+    const h2Revenue=a.delivered*c.h2Price*infl;
+    const costs=replacements+fixed+electricity+waterCost+oxygenCost;
+    const cash=h2Revenue+oxygenRevenue-costs;
+    rows.push({y,a,replacements,fixed,electricity,waterCost,oxygenCost,oxygenRevenue,h2Revenue,costs,cash});
+    cashFlows.push(cash);
+    npvCosts+=costs/discount;npvKg+=a.delivered/discount;
+    npvO2+=oxygenRevenue/discount;npvRevenue+=(h2Revenue+oxygenRevenue)/discount;
+    npvUseful+=a.useful/1000/discount;
+  }
+  let irr=NaN;
+  const conventional=cashFlows[0]<0 && cashFlows.slice(1).every(v=>v>=0) &&
+    cashFlows.slice(1).some(v=>v>0);
+  if(conventional){
+    let lo=-.9,hi=1;
+    while(npvAt(cashFlows,hi)>0 && hi<1024) hi=hi*2+1;
+    if(npvAt(cashFlows,lo)>=0 && npvAt(cashFlows,hi)<=0){
+      for(let i=0;i<100;i++){
+        const m=(lo+hi)/2;
+        if(npvAt(cashFlows,m)>0) lo=m;else hi=m;
+      }
+      irr=(lo+hi)/2;
+    }
+  }
+  let accumulated=-initialCapex,payback=initialCapex===0?0:NaN;
+  for(let i=1;i<cashFlows.length;i++){
+    const previous=accumulated;
+    accumulated+=cashFlows[i];
+    if(!finite(payback) && accumulated>=0)
+      payback=cashFlows[i]>0?i-1-previous/cashFlows[i]:i;
+  }
+  return {
+    c,data,profiles,rows,cashFlows,initialCapex,batteryCapex,npvCosts,npvKg,npvO2,
+    npv:npvRevenue-npvCosts,irr,payback,
+    grossLcoh:npvKg>0?npvCosts/npvKg:NaN,
+    netLcoh:npvKg>0?(npvCosts-npvO2)/npvKg:NaN,
+    usefulCost:npvUseful>0?(npvCosts-npvO2)/npvUseful:NaN,
+    created:new Date().toISOString()
+  };
+}
+function table(headers,rows){
+  return "<table><thead><tr>"+headers.map(h=>"<th>"+escapeHTML(h)+"</th>").join("")+
+    "</tr></thead><tbody>"+rows.map(row=>"<tr>"+row.map(v=>"<td>"+escapeHTML(v)+"</td>").join("")+"</tr>").join("")+
+    "</tbody></table>";
+}
+function metric(label,value){
+  return '<div class="metric"><span>'+escapeHTML(label)+'</span><strong>'+escapeHTML(value)+'</strong></div>';
+}
+function drawMonths(values){
+  const max=Math.max(1,...values),labels=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  let svg='<text x="15" y="18" font-size="12">H₂ producido (kg/mes)</text>';
+  for(let i=0;i<12;i++){
+    const height=values[i]/max*225,x=60+i*76;
+    svg+='<rect x="'+x+'" y="'+(260-height)+'" width="48" height="'+height+'" fill="#11956e">'+
+      '<title>'+labels[i]+": "+format(values[i],0)+' kg</title></rect>'+
+      '<text x="'+(x+24)+'" y="280" text-anchor="middle" font-size="12">'+labels[i]+'</text>';
+  }
+  $("monthChart").innerHTML=svg;
+}
+function renderResults(r){
+  const a=r.rows[0].a,c=r.c;
+  $("kpis").innerHTML=[
+    metric("H₂ producido · año 1",format(a.kg,0)+" kg"),
+    metric("H₂ entregado · año 1",format(a.delivered,0)+" kg"),
+    metric("Consumo DC medio · año 1",format(a.kg>0?a.stack/a.kg:NaN)+" kWh/kg"),
+    metric("Horas equivalentes · año 1",format(a.stack/c.stack,0)+" h"),
+    metric("LCOH bruto",format(r.grossLcoh)+" €/kg"),
+    metric("LCOH neto de O₂",format(r.netLcoh)+" €/kg"),
+    metric("VAN nominal",format(r.npv,0)+" €"),
+    metric("TIR convencional",finite(r.irr)?format(r.irr*100)+" %":"No determinada"),
+    metric("Primera recuperación simple",finite(r.payback)?format(r.payback,1)+" años":"No alcanzada"),
+    metric("Servicio útil · año 1",format(a.useful/1000,1)+" MWh"),
+    metric("Agua de proceso · año 1",format(a.waterM3,0)+" m³"),
+    metric("O₂ comercializado · año 1",format(a.o2Sold/1000,1)+" t"),
+    metric("Red · año 1",format(a.grid/1000,1)+" MWh"),
+    metric("Emisiones parciales · año 1",format(a.ci,2)+" gCO₂eq/MJ")
+  ].join("");
+  const balances=[
+    ["Generación renovable antes del convertidor",a.renewable],
+    ["Importación de red",a.grid],
+    ["ENTRADA",a.renewable+a.grid],
+    ["Pérdidas del convertidor renovable",a.invLoss],
+    ["Vertido",a.curt],
+    ["Pérdidas del rectificador",a.rectLoss],
+    ["Auxiliares BoP",a.bop],
+    ["Electricidad DC del stack",a.stack],
+    ["Compresión de H₂",a.comp],
+    ["Tratamiento de agua",a.waterEnergy],
+    ["Acondicionamiento de O₂ comercializado",a.o2Energy],
+    ["Pérdidas de batería",a.batteryLoss],
+    ["Aumento del inventario de batería",a.deltaSOC],
+    ["RESIDUO",a.residual]
+  ];
+  $("balance").innerHTML=table(["Concepto","MWh"],balances.map(x=>[x[0],format(x[1]/1000,x[0]==="RESIDUO"?8:3)]));
+  $("annual").innerHTML=table(
+    ["Año","H₂ entregado kg","Red MWh","Reposiciones €","Costes €","Ventas H₂ €","Ventas O₂ €","Flujo €"],
+    r.rows.map(row=>[
+      row.y,format(row.a.delivered,0),format(row.a.grid/1000,1),
+      format(row.replacements,0),format(row.costs,0),
+      format(row.h2Revenue,0),format(row.oxygenRevenue,0),format(row.cash,0)
+    ])
+  );
+  drawMonths(a.months);
+  $("audit").textContent=JSON.stringify({
+    version:VERSION,fecha:r.created,
+    perfiles:r.profiles.description,
+    compresionKwhKg:compression(c),
+    oxigenoKgPorKgH2:O2_RATIO,
+    capexInicial:r.initialCapex,
+    parametros:c,
+    convenciones:{
+      intervalos:8760,
+      inventarioInicialUtilizableKwh:0,
+      reposiciones:"Físicas según horas; pago al cierre anual",
+      descuento:"Nominal; flujos al final de cada año",
+      politicaBateria:"Carga renovable, descarga para demanda; no óptima",
+      tir:"Solo flujo convencional",
+      emisiones:"Parciales, no certificación"
+    }
+  },null,2);
+  $("report").innerHTML=
+    '<div class="card"><h2>'+escapeHTML(c.name)+'</h2><p>Responsable: '+escapeHTML(c.author)+
+    '</p><p>Fecha: '+escapeHTML(r.created)+'</p><p>'+escapeHTML(r.profiles.description)+
+    '</p><p>Versión '+VERSION+'. Modelo preliminar de baja temperatura, sin certificación.</p></div>'+
+    '<div class="card"><h2>Indicadores</h2><div class="metrics">'+$("kpis").innerHTML+'</div></div>'+
+    '<div class="card"><h2>Balance eléctrico del primer año</h2>'+$("balance").innerHTML+'</div>'+
+    '<div class="card"><h2>Flujos anuales</h2>'+$("annual").innerHTML+'</div>'+
+    '<div class="card"><h2>Hipótesis y parámetros</h2><pre>'+escapeHTML($("audit").textContent)+'</pre></div>'+
+    '<div class="note">No hay valoración económica independiente de electrificación directa. '+
+    'No se publica exergía, RFNBO, ni validación predictiva sin datos adecuados. '+
+    'La primera recuperación no garantiza que posteriores reposiciones mantengan el acumulado positivo.</div>';
+}
+function selectTab(id){
+  const panel=$("panel-"+id);
+  if(!panel) return;
+  document.querySelectorAll(".panel").forEach(p=>p.hidden=p!==panel);
+  document.querySelectorAll("nav button").forEach(b=>{
+    const active=b.dataset.tab===id;
+    b.setAttribute("aria-selected",String(active));
+    b.tabIndex=active?0:-1;
+  });
+}
+function download(name,text,mime){
+  const url=URL.createObjectURL(new Blob([text],{type:mime+";charset=utf-8"}));
+  const a=document.createElement("a");
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function csvCell(value){
+  let text=String(value);
+  if(typeof value==="string" && /^[=+\-@]/.test(text)) text="'"+text;
+  return '"'+text.replace(/"/g,'""')+'"';
+}
+function csvDownload(name,rows){
+  download(name,"\uFEFF"+rows.map(row=>row.map(csvCell).join(";")).join("\r\n"),"text/csv");
+}
+function parseCSV(text){
+  if(text.length>10*1024*1024) throw Error("CSV demasiado grande.");
+  const lines=text.replace(/^\uFEFF/,"").replace(/\r\n?/g,"\n").split("\n");
+  while(lines.length && !lines[lines.length-1].trim()) lines.pop();
+  if(lines.length!==HOURS+1) throw Error("Se requieren cabecera y exactamente 8.760 filas.");
+  function cells(line){
+    const out=[];let token="",quoted=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){
+        if(quoted && line[i+1]==='"'){token+='"';i++;}
+        else quoted=!quoted;
+      }else if(ch===";" && !quoted){out.push(token.trim());token="";}
+      else token+=ch;
+    }
+    if(quoted) throw Error("Comillas CSV sin cerrar.");
+    out.push(token.trim());
+    return out;
+  }
+  const headers=cells(lines[0]).map(s=>s.toLowerCase());
+  if(new Set(headers).size!==headers.length) throw Error("Cabeceras duplicadas.");
+  const allowed=["hora","solar","eolica","precio_eur_mwh"];
+  if(headers.some(h=>!allowed.includes(h)) || !headers.includes("hora"))
+    throw Error("Cabecera no reconocida. Use hora;solar;eolica;precio_eur_mwh.");
+  const out={name:"CSV importado"};
+  const map={solar:"solar",eolica:"wind",precio_eur_mwh:"prices"};
+  for(const [column,key] of Object.entries(map)){
+    if(headers.includes(column)) out[key]=[];
+  }
+  for(let h=0;h<HOURS;h++){
+    const row=cells(lines[h+1]);
+    if(row.length!==headers.length) throw Error("Número de columnas incorrecto en hora "+h);
+    const hourText=row[headers.indexOf("hora")];
+    if(!/^\d+$/.test(hourText) || Number(hourText)!==h)
+      throw Error("Horas ausentes, desordenadas o duplicadas en fila "+(h+2));
+    for(const [column,key] of Object.entries(map)){
+      if(!out[key]) continue;
+      const token=row[headers.indexOf(column)].replace(",",".");
+      if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(token))
+        throw Error("Número inválido en "+column+", hora "+h);
+      out[key].push(Number(token));
+    }
+  }
+  return validateSeries(out);
+}
+function readStore(){
+  const text=localStorage.getItem(STORAGE_KEY);
+  if(!text) return [];
+  const value=JSON.parse(text);
+  if(!Array.isArray(value)) throw Error("Biblioteca local dañada.");
+  return value;
+}
+function updateProjectList(){
+  try{
+    const projects=readStore();
+    $("projectList").innerHTML=projects.length?projects.map(p=>
+      '<option value="'+escapeHTML(p.id)+'">'+escapeHTML(p.config?.name||"Proyecto")+'</option>'
+    ).join(""):'<option value="">No hay proyectos guardados</option>';
+    if(currentProjectId) $("projectList").value=currentProjectId;
+  }catch(e){
+    $("projectList").innerHTML='<option value="">Almacenamiento no disponible</option>';
+    status(e.message,true);
+  }
+}
+function projectPayload(){
+  return {
+    app:"H2-Verde-Consolidado",version:VERSION,
+    config:readForm(),series:validateSeries(imported),
+    saved:new Date().toISOString()
+  };
+}
+function acceptProject(p){
+  if(!p || p.app!=="H2-Verde-Consolidado" || !["3.0",VERSION].includes(p.version))
+    throw Error("Proyecto incompatible: se requiere formato consolidado 3.0 o 3.1.");
+  const nextConfig=validateConfig(p.config);
+  const nextSeries=validateSeries(p.series);
+  config=nextConfig;imported=nextSeries;
+  renderForm();renderSeriesInfo();invalidate();
+}
+function renderSeriesInfo(){
+  const columns=imported?["solar","wind","prices"].filter(k=>imported[k]):[];
+  $("seriesInfo").textContent=imported
+    ?"Importadas: "+imported.name+". Columnas: "+columns.join(", ")+". Las demás son sintéticas/plana."
+    :"Sin series importadas. Se utilizan perfiles sintéticos y precio plano.";
+}
+function requireResult(){
+  if(!result) throw Error("Calcule un resultado válido antes de exportar.");
+  return result;
+}
+function guard(fn){
+  return async function(){
+    try{await fn.apply(this,arguments);}
+    catch(e){status(e.message||String(e),true);console.error(e);}
+  };
+}
+$("form").addEventListener("input",invalidate);
+$("form").addEventListener("change",invalidate);
+$("form").addEventListener("submit",guard(async function(event){
+  event.preventDefault();
+  if(calculating) return;
+  config=readForm();
+  result=null;
+  calculating=true;
+  const button=$("form").querySelector("button[type=submit]");
+  button.disabled=true;
+  status("Calculando el horizonte completo…");
+  try{
+    await new Promise(resolve=>setTimeout(resolve,30));
+    result=calculate(config,imported);
+    renderResults(result);
+    selectTab("resultados");
+    status("Resultado calculado. Balances eléctricos comprobados por hora y por año.");
+  }finally{
+    calculating=false;
+    button.disabled=false;
+  }
+}));
+$("defaults").addEventListener("click",()=>{
+  if(!confirm("¿Crear un proyecto nuevo? Se perderán cambios no guardados.")) return;
+  config={...DEFAULTS};imported=null;currentProjectId=null;
+  renderForm();renderSeriesInfo();invalidate();
+});
+document.querySelector("nav").addEventListener("click",event=>{
+  const b=event.target.closest("button[data-tab]");
+  if(!b) return;
+  selectTab(b.dataset.tab);
+  history.replaceState(null,"","#"+b.dataset.tab);
+});
+document.querySelector("nav").addEventListener("keydown",event=>{
+  const buttons=[...document.querySelectorAll("nav button")];
+  const index=buttons.indexOf(event.target);
+  if(index<0) return;
+  let target;
+  if(event.key==="ArrowRight") target=(index+1)%buttons.length;
+  else if(event.key==="ArrowLeft") target=(index-1+buttons.length)%buttons.length;
+  else if(event.key==="Home") target=0;
+  else if(event.key==="End") target=buttons.length-1;
+  else return;
+  event.preventDefault();
+  buttons[target].click();buttons[target].focus();
+});
+function applyHash(){
+  selectTab(location.hash.slice(1)||"datos");
+}
+window.addEventListener("hashchange",applyHash);
+
+$("importSeries").addEventListener("click",()=>$("seriesFile").click());
+$("seriesFile").addEventListener("change",guard(async function(){
+  const file=this.files[0];this.value="";
+  if(!file) return;
+  if(file.size>10*1024*1024) throw Error("El archivo supera 10 MB.");
+  const next=parseCSV(await file.text());
+  next.name=file.name.slice(0,200);
+  imported=next;renderSeriesInfo();invalidate();
+  status("Series importadas y validadas. Guarde el proyecto para conservarlas.");
+}));
+$("clearSeries").addEventListener("click",()=>{
+  imported=null;renderSeriesInfo();invalidate();
+});
+$("exportSeries").addEventListener("click",guard(function(){
+  const c=readForm(),profiles=getProfiles(c,imported);
+  const rows=[["hora","solar","eolica","precio_eur_mwh"]];
+  for(let h=0;h<HOURS;h++) rows.push([h,profiles.solar[h],profiles.wind[h],profiles.prices[h]]);
+  csvDownload("h2verde-series.csv",rows);
+  status("Series exportadas con unidades explícitas.");
+}));
+
+$("saveProject").addEventListener("click",guard(function(){
+  const p=projectPayload();
+  const projects=readStore();
+  const id=currentProjectId ||
+    (globalThis.crypto?.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2));
+  p.id=id;
+  const index=projects.findIndex(x=>x.id===id);
+  if(index>=0) projects[index]=p;else projects.push(p);
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(projects));
+  currentProjectId=id;config=p.config;
+  updateProjectList();
+  status("Proyecto guardado. Exporte también una copia JSON.");
+}));
+$("loadProject").addEventListener("click",guard(function(){
+  const id=$("projectList").value;
+  const p=readStore().find(x=>x.id===id);
+  if(!p) throw Error("Seleccione un proyecto existente.");
+  acceptProject(p);currentProjectId=p.id;
+  status("Proyecto cargado con sus series. Pulse «Calcular».");
+}));
+$("deleteProject").addEventListener("click",guard(function(){
+  const id=$("projectList").value;
+  if(!id) throw Error("Seleccione un proyecto.");
+  if(!confirm("¿Eliminar el proyecto guardado seleccionado?")) return;
+  const next=readStore().filter(x=>x.id!==id);
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(next));
+  if(currentProjectId===id) currentProjectId=null;
+  updateProjectList();status("Proyecto eliminado.");
+}));
+$("exportProject").addEventListener("click",guard(function(){
+  download("h2verde-proyecto.json",JSON.stringify(projectPayload(),null,2),"application/json");
+  status("Copia de seguridad exportada.");
+}));
+$("importProject").addEventListener("click",()=>$("projectFile").click());
+$("projectFile").addEventListener("change",guard(async function(){
+  const file=this.files[0];this.value="";
+  if(!file) return;
+  if(file.size>10*1024*1024) throw Error("El proyecto supera 10 MB.");
+  const p=JSON.parse(await file.text());
+  acceptProject(p);currentProjectId=null;
+  status("Proyecto importado. Guárdelo localmente y calcule sus resultados.");
+}));
+
+$("print").addEventListener("click",guard(function(){
+  requireResult();selectTab("informe");
+  requestAnimationFrame(()=>window.print());
+}));
+$("reportHtml").addEventListener("click",guard(function(){
+  requireResult();
+  const html='<!doctype html><html lang="es"><head><meta charset="utf-8">'+
+    '<title>Informe H₂ Verde</title><style>body{font:15px/1.5 system-ui;max-width:1100px;margin:30px auto;padding:15px}'+
+    'table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:6px}'+
+    'pre{white-space:pre-wrap}strong{display:block}.metric{margin:10px 0}</style></head><body>'+
+    $("report").innerHTML+'</body></html>';
+  download("h2verde-informe.html",html,"text/html");
+}));
+$("hourlyCsv").addEventListener("click",guard(function(){
+  const r=requireResult(),H=r.rows[0].a.H;
+  const rows=[[
+    "hora","renovable_antes_convertidor_kW","stack_DC_kW","H2_producido_kg",
+    "red_kW","consumo_planta_kW","SOC_pct","carga_bateria_kW","descarga_bateria_kW"
+  ]];
+  for(let h=0;h<HOURS;h++) rows.push([
+    h,H.renewable[h],H.stack[h],H.kg[h],H.grid[h],H.plant[h],H.soc[h],H.charge[h],H.discharge[h]
+  ]);
+  csvDownload("h2verde-primer-ano.csv",rows);
+  status("Primer año horario exportado: 8.760 intervalos.");
+}));
+
+$("tests").addEventListener("click",guard(function(){
+  const messages=[];
+  function close(actual,expected,tolerance,label){
+    if(!finite(actual) || Math.abs(actual-expected)>tolerance)
+      throw Error(label+": esperado "+expected+", obtenido "+actual);
+    messages.push("OK · "+label);
+  }
+  const test={...DEFAULTS,
+    years:1,pv:100,wind:0,inv:100,rect:100,bop:0,stack:100,sec:50,
+    deg:0,pIn:1,pOut:1,waterEnergy:0,o2Capture:0,
+    gridMode:"off",battery:false,capRenew:1000,capStack:0,capPlant:0,
+    fixed:0,waterPrice:0,renewPrice:0,rate:0,inflation:0,
+    stackLife:100000,h2Price:1
+  };
+  const data={name:"Prueba constante",solar:new Array(HOURS).fill(1),wind:new Array(HOURS).fill(0)};
+  const r=calculate(test,data),a=r.rows[0].a;
+  close(a.stack,876000,1e-6,"Energía DC: 100 kW × 8.760 h");
+  close(a.kg,17520,1e-6,"Producción: energía / 50 kWh/kg");
+  close(a.residual,0,1e-5,"Cierre eléctrico sin batería");
+  close(r.npvCosts,1000,1e-6,"CAPEX inicial contabilizado una vez");
+  close(r.npv,r.rows[0].h2Revenue-1000,1e-6,"VAN sin doble CAPEX");
+  close(compression({...test,pIn:30,pOut:1}),0,1e-12,"Sin compresión a presión inferior");
+
+  const batteryTest={...test,pv:200,battery:true,batCap:1,batPower:.1,batEff:90,socMin:10,socMax:90};
+  const varying={name:"Alternancia",solar:Array.from({length:HOURS},(_,h)=>h%24<12?1:0)};
+  const rb=calculate(batteryTest,varying),ab=rb.rows[0].a;
+  close(ab.residual,0,1e-5,"Cierre eléctrico con batería e inventario");
+  if(ab.batteryLoss<0 || ab.socFinal<0) throw Error("Batería no física.");
+  messages.push("OK · Batería sin pérdidas negativas ni energía inicial utilizable");
+  close(120/(1*33.33*3.6),120/119.988,1e-12,"Conversión kWh → MJ");
+  $("testOutput").textContent=messages.join("\n")+
+    "\n\nEstas comprobaciones no certifican el modelo ni sustituyen pruebas externas.";
+  status("Comprobaciones internas terminadas.");
+}));
+
+window.addEventListener("unhandledrejection",event=>{
+  status("Error asíncrono: "+(event.reason?.message||event.reason),true);
+});
+window.addEventListener("error",event=>{
+  if(event.message) status("Error inesperado: "+event.message,true);
+});
+
+if("serviceWorker" in navigator && isSecureContext && location.protocol!=="file:"){
+  navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(reg=>{
+    function waiting(){
+      if(reg.waiting) $("pwaStatus").textContent="Actualización disponible: cierre todas las ventanas y vuelva a abrir.";
+    }
+    $("pwaStatus").textContent=navigator.serviceWorker.controller
+      ?"PWA: publicación local activa."
+      :"PWA: primera instalación; vuelva a abrir después de completarse.";
+    waiting();
+    reg.addEventListener("updatefound",()=>{
+      const worker=reg.installing;
+      if(!worker) return;
+      worker.addEventListener("statechange",()=>{
+        if(worker.state==="installed"){
+          if(navigator.serviceWorker.controller) waiting();
+          else $("pwaStatus").textContent="PWA instalada. Cierre y vuelva a abrir para utilizar la publicación local.";
+        }
+        if(worker.state==="redundant")
+          $("pwaStatus").textContent="PWA: instalación no completada.";
+      });
+    });
+  }).catch(e=>{
+    $("pwaStatus").textContent="PWA no disponible: "+e.message;
+  });
+}else{
+  $("pwaStatus").textContent="PWA: utilice HTTPS o un servidor localhost.";
+}
+renderForm();
+renderSeriesInfo();
+updateProjectList();
+applyHash();
+status("Introduzca sus hipótesis y pulse «Calcular». No hay resultados precalculados.");
+</script>
+<script src="./h2professional.js"></script>
+</body>
+</html>
