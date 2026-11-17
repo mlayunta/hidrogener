@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>H₂ Verde · Recursos documentados</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;background:#eef5f1;color:#17372d;
+  font:15px/1.55 system-ui,sans-serif
+}
+main{max-width:1000px;margin:auto;padding:22px}
+h1{font-size:1.6rem}
+h2{font-size:1.15rem}
+.card{
+  background:#fff;border:1px solid #cee0d6;
+  border-radius:10px;padding:18px;margin-bottom:16px
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:12px
+}
+label{display:block;font-weight:650}
+input,button{
+  font:inherit;padding:10px;
+  border:1px solid #aac6b8;border-radius:7px
+}
+input{width:100%;margin-top:5px}
+input[type=checkbox]{width:auto}
+button{background:#075e49;color:white;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.note{
+  padding:12px;background:#fff4dc;border:1px solid #e7cf95;
+  border-radius:8px
+}
+pre{white-space:pre-wrap;overflow-wrap:anywhere}
+small{display:block;color:#567368;font-weight:400}
+a{color:#075e49}
+#error{color:#a32020;font-weight:650}
+#runtime{padding:10px;border-radius:7px;background:#fff4dc}
+#runtime.ready{background:#e2f3e9;color:#075e49}
+#runtime.bad{background:#ffe5e5;color:#a32020}
+</style>
+</head>
+<body>
+<main>
+<h1>H₂ Verde · Recursos documentados</h1>
+<p>
+Preparación de producción FV de PVGIS y precios eléctricos.
+La salida está diseñada para el importador horario UTC propuesto
+para H₂ Verde 3.2; comprueba que tu aplicación dispone de ese importador.
+</p>
+
+<p id="runtime" role="status">JavaScript pendiente de iniciar.</p>
+<noscript>
+<p class="note">
+JavaScript está desactivado. Esta herramienta necesita JavaScript.
+</p>
+</noscript>
+
+<div class="note">
+La herramienta prepara datos y registra su procedencia.
+No autentica los archivos, no certifica RFNBO y no convierte
+precios mayoristas en una tarifa final.
+Los resultados son para prefactibilidad.
+</div>
+
+<section class="card">
+<h2>1 · Localización y año UTC</h2>
+<div class="grid">
+<label>Latitud
+<input id="lat" type="number" min="-70" max="70"
+step="any" value="41.269">
+</label>
+<label>Longitud
+<input id="lon" type="number" min="-180" max="180"
+step="any" value="-1.062">
+</label>
+<label>Año histórico
+<input id="year" type="number" min="1900" max="2200"
+step="1" value="2023">
+</label>
+<label>Inclinación FV
+<input id="tilt" type="number" min="0" max="90"
+step="any" value="30">
+</label>
+<label>Azimut PVGIS
+<input id="azimuth" type="number" min="-180" max="180"
+step="any" value="0">
+<small>0 = sur; −90 = este; +90 = oeste.</small>
+</label>
+<label>Pérdidas de sistema PVGIS
+<input id="loss" type="number" min="0" max="50"
+step="any" value="14">
+<small>Ya estarán incluidas en la producción calculada por PVGIS.</small>
+</label>
+</div>
+<p>
+Los parámetros de inclinación, azimut y pérdidas se utilizan para
+generar la solicitud. La importación conserva los parámetros del
+archivo original y no vuelve a calcular la producción.
+</p>
+<p>
+La solicitud utiliza 1 kWp de referencia y tecnología c-Si.
+La disponibilidad del año depende de PVGIS y su base de datos.
+</p>
+<div class="toolbar">
+<button id="request" type="button" disabled>
+Abrir solicitud oficial PVGIS
+</button>
+</div>
+<p>
+Alternativa:
+<a href="https://re.jrc.ec.europa.eu/pvg_tools/en/"
+target="_blank" rel="noopener noreferrer">interfaz oficial de PVGIS</a>.
+Selecciona datos horarios, cálculo FV y descarga JSON.
+</p>
+</section>
+
+<section class="card">
+<h2>2 · Archivo FV de PVGIS</h2>
+<label>JSON horario original
+<input id="pvFile" type="file" accept=".json,application/json">
+</label>
+<p>
+Se utilizará P en W y la potencia nominal del archivo.
+La irradiancia y la velocidad de viento no se utilizarán como
+potencia eléctrica. Las coordenadas deben coincidir con las indicadas.
+</p>
+<label>
+<input id="mapMinutes" type="checkbox">
+Acepto, cuando las marcas PVGIS tengan minutos distintos de cero,
+asignar cada registro al intervalo de su misma hora UTC.
+</label>
+<p class="note">
+La asignación es una aproximación temporal explícita.
+No demuestra coincidencia subhoraria ni cumplimiento regulatorio.
+Sin aceptación, esas marcas se rechazan.
+No edites manualmente las fechas del JSON.
+</p>
+</section>
+
+<section class="card">
+<h2>3 · Precios documentados — opcional</h2>
+<label>Referencia de procedencia
+<input id="priceSource" maxlength="2000"
+placeholder="Proveedor, zona de mercado, documento o URL, fecha y transformaciones">
+</label>
+<label>CSV de precios con fechas y duración
+<input id="priceFile" type="file" accept=".csv,text/csv">
+</label>
+<p>Formato normalizado obligatorio, con punto y coma:</p>
+<pre>fecha_utc;duracion_min;precio_eur_mwh
+2023-01-01T00:00:00Z;60;80,25
+2023-01-01T01:00:00Z;60;76,50</pre>
+<p>
+Las dos filas anteriores son un ejemplo de formato, no precios
+verificados ni un calendario anual completo.
+Se admiten periodos de 15, 30 o 60 minutos.
+Las fechas representan el comienzo del periodo y deben tener zona explícita.
+El archivo debe cubrir todo el año UTC seleccionado, sin huecos.
+</p>
+<p>
+No se interpretan directamente formatos nativos de OMIE ni XML de
+ENTSO-E. Documenta la normalización realizada.
+</p>
+<label>
+<input id="aggregate" type="checkbox">
+Acepto agregar precios subhorarios mediante media ponderada por
+duración, suponiendo consumo constante dentro de cada hora.
+</label>
+<p class="note">
+La agregación no reproduce un despacho cuarto-horario.
+Si el consumo varía dentro de la hora, el coste puede ser distinto.
+</p>
+<p>
+Fuentes:
+<a href="https://www.omie.es/es/file-access-list"
+target="_blank" rel="noopener noreferrer">OMIE</a> ·
+<a href="https://transparency.entsoe.eu/"
+target="_blank" rel="noopener noreferrer">ENTSO-E</a>.
+</p>
+</section>
+
+<section class="card">
+<h2>4 · Preparación y exportación</h2>
+<div class="toolbar">
+<button id="prepare" type="button" disabled>Preparar recursos</button>
+<button id="csv" type="button" disabled>Descargar CSV para H₂ Verde</button>
+<button id="dossier" type="button" disabled>Descargar expediente de recursos</button>
+</div>
+<p id="error" role="alert"></p>
+<pre id="summary" role="status" aria-live="polite">Sin recursos preparados.</pre>
+<small>
+Refrescar o cerrar la página elimina la preparación en memoria.
+Descarga el CSV y el expediente antes de salir.
+</small>
+</section>
+</main>
+
+<!-- Diagnóstico independiente del script principal. -->
+<script>
+"use strict";
+window.addEventListener("error", function(event){
+  const runtime = document.getElementById("runtime");
+  const error = document.getElementById("error");
+  runtime.className = "bad";
+  runtime.textContent = "Error de JavaScript.";
+  error.textContent =
+    (event.message || "Error de ejecución") +
+    (event.lineno ? " · línea " + event.lineno : "");
+});
+window.addEventListener("unhandledrejection", function(event){
+  const reason = event.reason;
+  document.getElementById("error").textContent =
+    "Error no gestionado: " +
+    (reason && reason.message ? reason.message : String(reason));
+});
+</script>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+const HOUR = 3600000;
+let prepared = null;
+let busy = false;
+
+function fail(message){
+  throw new Error(message);
+}
+
+function numberInput(id,min,max,integer=false){
+  const value = $(id).valueAsNumber;
+  if(
+    !Number.isFinite(value) || value < min || value > max ||
+    (integer && !Number.isInteger(value))
+  ){
+    fail("Valor inválido en " + id + ".");
+  }
+  return value;
+}
+
+function yearLimits(year){
+  const start = Date.UTC(year,0,1);
+  const end = Date.UTC(year+1,0,1);
+  return {start,end,count:(end-start)/HOUR};
+}
+
+function isoInstant(value){
+  const m = String(value).match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(Z|[+-]\d{2}:\d{2})$/
+  );
+  if(!m) fail("Fecha ISO inválida o sin zona: " + value);
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const h = Number(m[4]);
+  const mi = Number(m[5]);
+  const s = Number(m[6]);
+
+  if(y < 1900 || y > 2200) fail("Año inválido.");
+
+  const local = Date.UTC(y,mo-1,d,h,mi,s);
+  const check = new Date(local);
+
+  if(
+    check.getUTCFullYear() !== y ||
+    check.getUTCMonth() !== mo-1 ||
+    check.getUTCDate() !== d ||
+    check.getUTCHours() !== h ||
+    check.getUTCMinutes() !== mi ||
+    check.getUTCSeconds() !== s
+  ){
+    fail("Fecha inexistente: " + value);
+  }
+
+  let offset = 0;
+  if(m[7] !== "Z"){
+    const oh = Number(m[7].slice(1,3));
+    const om = Number(m[7].slice(4,6));
+    if(oh > 14 || om > 59 || (oh === 14 && om !== 0)){
+      fail("Desfase horario inválido.");
+    }
+    offset = (oh*60+om)*(m[7][0] === "+" ? 1 : -1);
+  }
+  return local-offset*60000;
+}
+
+function pvgisInstant(value){
+  const m = String(value).match(
+    /^(\d{4})(\d{2})(\d{2}):(\d{2})(\d{2})$/
+  );
+  if(!m) fail("Marca PVGIS inválida: " + value);
+  return isoInstant(
+    m[1] + "-" + m[2] + "-" + m[3] +
+    "T" + m[4] + ":" + m[5] + ":00Z"
+  );
+}
+
+function cells(line){
+  const result = [];
+  let token = "";
+  let quoted = false;
+  for(let i=0;i<line.length;i++){
+    const c = line[i];
+    if(c === '"'){
+      if(quoted && line[i+1] === '"'){
+        token += '"';
+        i++;
+      }else{
+        quoted = !quoted;
+      }
+    }else if(c === ";" && !quoted){
+      result.push(token.trim());
+      token = "";
+    }else{
+      token += c;
+    }
+  }
+  if(quoted) fail("Comillas CSV sin cerrar.");
+  result.push(token.trim());
+  return result;
+}
+
+function numeric(value,label){
+  const normalized = String(value).replace(",",".");
+  if(
+    !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(normalized)
+  ){
+    fail("Número inválido: " + label);
+  }
+  const result = Number(normalized);
+  if(!Number.isFinite(result)) fail("Número no finito: " + label);
+  return result;
+}
+
+async function readFile(file){
+  if(!file) return null;
+  if(file.size > 25*1024*1024){
+    fail("Archivo superior a 25 MB: " + file.name);
+  }
+  const bytes = await file.arrayBuffer();
+  const text = new TextDecoder("utf-8",{fatal:true})
+    .decode(bytes).replace(/^\uFEFF/,"");
+  return {bytes,text,name:file.name,size:file.size};
+}
+
+async function hashBytes(bytes){
+  if(!globalThis.crypto || !globalThis.crypto.subtle) return null;
+  try{
+    const result = await globalThis.crypto.subtle.digest("SHA-256",bytes);
+    return Array.from(new Uint8Array(result),b =>
+      b.toString(16).padStart(2,"0")
+    ).join("");
+  }catch(error){
+    return null;
+  }
+}
+
+function download(name,value,type){
+  const url = URL.createObjectURL(new Blob([value],{type}));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url),3000);
+}
+
+function parsePV(raw,year,lat,lon,allowMinuteMapping){
+  let json;
+  try{
+    json = JSON.parse(raw);
+  }catch(error){
+    fail(
+      "El archivo FV no es un JSON válido. " +
+      "Utiliza la descarga original completa, sin nombres ni texto añadido. " +
+      error.message
+    );
+  }
+
+  const rows = json.outputs?.hourly;
+  const location = json.inputs?.location;
+  const nominalValue = json.inputs?.pv_module?.peak_power;
+  const nominal = Number(nominalValue);
+
+  if(!Array.isArray(rows) || !rows.length){
+    fail("El JSON no contiene outputs.hourly con registros.");
+  }
+  if(
+    nominalValue === null || nominalValue === undefined ||
+    !Number.isFinite(nominal) || nominal <= 0
+  ){
+    fail("No se identifica la potencia nominal FV en kWp.");
+  }
+
+  const fileLat = location?.latitude;
+  const fileLon = location?.longitude;
+  if(
+    typeof fileLat !== "number" || !Number.isFinite(fileLat) ||
+    typeof fileLon !== "number" || !Number.isFinite(fileLon)
+  ){
+    fail("No se identifican las coordenadas del archivo PVGIS.");
+  }
+  if(
+    Math.abs(fileLat-lat) > 0.001 ||
+    Math.abs(fileLon-lon) > 0.001
+  ){
+    fail(
+      "Coordenadas diferentes. Archivo PVGIS: " +
+      fileLat + ", " + fileLon +
+      ". Formulario: " + lat + ", " + lon + "."
+    );
+  }
+
+  const limits = yearLimits(year);
+  if(rows.length !== limits.count){
+    fail(
+      "Se esperaban " + limits.count + " registros horarios para " +
+      year + ", pero el archivo contiene " + rows.length + "."
+    );
+  }
+
+  const values = new Array(limits.count);
+  let mapped = 0;
+  let previous = null;
+
+  for(let r=0;r<rows.length;r++){
+    const row = rows[r];
+    if(!row || typeof row !== "object"){
+      fail("Registro FV inválido en posición " + (r+1) + ".");
+    }
+    const original = pvgisInstant(row.time);
+    if(previous !== null && original <= previous){
+      fail("PVGIS contiene registros desordenados o duplicados.");
+    }
+    previous = original;
+
+    if(original < limits.start || original >= limits.end){
+      fail("PVGIS debe contener exclusivamente el año seleccionado.");
+    }
+
+    const hourStart = Math.floor(original/HOUR)*HOUR;
+    if(original !== hourStart){
+      if(!allowMinuteMapping){
+        fail(
+          "PVGIS contiene minutos distintos de cero, por ejemplo " +
+          row.time + ". Marca la casilla de asignación temporal " +
+          "del apartado 2 y vuelve a preparar."
+        );
+      }
+      mapped++;
+    }
+
+    const index = (hourStart-limits.start)/HOUR;
+    if(!Number.isInteger(index) || index < 0 || index >= values.length){
+      fail("Intervalo FV fuera del calendario.");
+    }
+    if(values[index] !== undefined){
+      fail("Dos registros FV corresponden a la misma hora.");
+    }
+    if(typeof row.P !== "number" || !Number.isFinite(row.P) || row.P < 0){
+      fail("P ausente o inválida en " + row.time + ".");
+    }
+
+    const factor = row.P/(nominal*1000);
+    if(factor > 1){
+      fail(
+        "La producción supera 1 kW por kWp en " + row.time +
+        ". El formato objetivo admite factores entre 0 y 1. " +
+        "No se ha recortado la producción."
+      );
+    }
+    values[index] = factor;
+  }
+
+  for(let i=0;i<values.length;i++){
+    if(values[i] === undefined){
+      fail(
+        "Falta el intervalo FV " +
+        new Date(limits.start+i*HOUR).toISOString()
+      );
+    }
+  }
+
+  return {
+    values,
+    metadata:{
+      provider:"JRC / PVGIS",
+      nature:"Producción FV modelada, no medición de instalación",
+      originalInputs:json.inputs,
+      originalMetadata:json.meta || null,
+      nominalReferenceKwp:nominal,
+      transformation:"solar = P_W / (1000 × peak_power_kWp)",
+      electricalPerimeter:
+        "Salida FV de PVGIS; evitar duplicar pérdidas ya incluidas",
+      minuteRecordsAssignedToHour:mapped,
+      timePolicy:mapped
+        ? "Asignación explícita al inicio de la misma hora UTC"
+        : "Marcas horarias UTC sin reasignación de minutos",
+      limitation:
+        "No acredita coincidencia subhoraria ni cumplimiento regulatorio"
+    },
+    original:json
+  };
+}
+
+function parsePrices(raw,year,source,allowAggregation){
+  if(!source.trim()) fail("Indique la procedencia de los precios.");
+
+  const lines = raw.replace(/\r\n?/g,"\n").split("\n");
+  while(lines.length && !lines[lines.length-1].trim()) lines.pop();
+  if(lines.length < 2) fail("CSV de precios vacío.");
+
+  const headers = cells(lines[0]);
+  const expected = ["fecha_utc","duracion_min","precio_eur_mwh"];
+  if(
+    headers.length !== expected.length ||
+    headers.some((v,i) => v !== expected[i])
+  ){
+    fail("Cabecera requerida: fecha_utc;duracion_min;precio_eur_mwh");
+  }
+
+  const limits = yearLimits(year);
+  const sums = new Array(limits.count).fill(0);
+  const minutes = new Array(limits.count).fill(0);
+  let cursor = limits.start;
+  let subhourly = 0;
+
+  for(let i=1;i<lines.length;i++){
+    const row = cells(lines[i]);
+    if(row.length !== 3) fail("Columnas incorrectas en fila " + (i+1));
+
+    const instant = isoInstant(row[0]);
+    const duration = numeric(row[1],"duración fila " + (i+1));
+    const price = numeric(row[2],"precio fila " + (i+1));
+
+    if(![15,30,60].includes(duration)){
+      fail("Duraciones permitidas: 15, 30 o 60 minutos.");
+    }
+    if(price < -1000 || price > 10000){
+      fail("Precio fuera del rango admitido: fila " + (i+1));
+    }
+    if(instant !== cursor){
+      fail(
+        "Hueco, duplicado o desorden en fila " + (i+1) +
+        ". Se esperaba " + new Date(cursor).toISOString()
+      );
+    }
+
+    const hourStart = Math.floor(instant/HOUR)*HOUR;
+    const end = instant+duration*60000;
+    if(end > hourStart+HOUR || end > limits.end){
+      fail("Un periodo cruza una hora o el límite anual.");
+    }
+
+    if(duration < 60){
+      if(!allowAggregation){
+        fail(
+          "Hay precios subhorarios. Marca la aceptación " +
+          "de agregación en el apartado 3."
+        );
+      }
+      subhourly++;
+    }
+
+    const index = (hourStart-limits.start)/HOUR;
+    if(!Number.isInteger(index) || index < 0 || index >= sums.length){
+      fail("Precio fuera del año seleccionado.");
+    }
+    sums[index] += price*duration;
+    minutes[index] += duration;
+    cursor = end;
+  }
+
+  if(cursor !== limits.end){
+    fail("Los precios no cubren el año UTC completo.");
+  }
+
+  const values = sums.map((sum,i) => {
+    if(minutes[i] !== 60){
+      fail("Cobertura incompleta de una hora de precios.");
+    }
+    return sum/60;
+  });
+
+  return {
+    values,
+    metadata:{
+      source:source.trim(),
+      units:"EUR/MWh",
+      marketPerimeter:
+        "Declarado por el usuario; no autenticado automáticamente",
+      subhourlyPeriods:subhourly,
+      transformation:subhourly
+        ? "Media horaria ponderada por duración"
+        : "Precios horarios sin agregación",
+      assumption:subhourly
+        ? "Consumo constante dentro de cada hora"
+        : "Modelo de intervalos horarios",
+      exclusions:
+        "No incorpora automáticamente peajes, cargos, impuestos ni comercialización"
+    },
+    originalCSV:raw
+  };
+}
+
+function clearPrepared(){
+  prepared = null;
+  $("csv").disabled = true;
+  $("dossier").disabled = true;
+  $("summary").textContent =
+    "Datos modificados. Pulsa Preparar recursos.";
+  $("error").textContent = "";
+}
+
+function setBusy(value){
+  busy = value;
+  document.querySelectorAll("input").forEach(input => {
+    input.disabled = value;
+  });
+  $("prepare").disabled = value;
+  $("request").disabled = value;
+  $("prepare").textContent = value
+    ? "Preparando…" : "Preparar recursos";
+}
+
+document.querySelectorAll("input").forEach(input => {
+  input.addEventListener("input",clearPrepared);
+  input.addEventListener("change",clearPrepared);
+});
+
+$("request").addEventListener("click",() => {
+  if(busy) return;
+  $("error").textContent = "";
+  try{
+    const lat = numberInput("lat",-70,70);
+    const lon = numberInput("lon",-180,180);
+    const year = numberInput("year",1900,2200,true);
+    const tilt = numberInput("tilt",0,90);
+    const azimuth = numberInput("azimuth",-180,180);
+    const loss = numberInput("loss",0,50);
+
+    const url = new URL(
+      "https://re.jrc.ec.europa.eu/api/v5_3/seriescalc"
+    );
+    const params = {
+      lat,lon,startyear:year,endyear:year,
+      pvcalculation:1,peakpower:1,pvtechchoice:"crystSi",
+      mountingplace:"free",loss,angle:tilt,aspect:azimuth,
+      usehorizon:1,outputformat:"json"
+    };
+    for(const [key,value] of Object.entries(params)){
+      url.searchParams.set(key,String(value));
+    }
+    window.open(url.href,"_blank","noopener,noreferrer");
+    $("summary").textContent =
+      "Solicitud enviada a una nueva pestaña.\n" +
+      "Guarda el JSON original completo e impórtalo en el apartado 2.\n" +
+      "Si no se abre, comprueba el bloqueo de ventanas emergentes.\n\n" +
+      url.href;
+  }catch(error){
+    $("error").textContent = error.message;
+  }
+});
+
+$("prepare").addEventListener("click",async() => {
+  if(busy) return;
+  setBusy(true);
+  prepared = null;
+  $("csv").disabled = true;
+  $("dossier").disabled = true;
+  $("error").textContent = "";
+  $("summary").textContent = "Leyendo y comprobando archivos…";
+
+  try{
+    const year = numberInput("year",1900,2200,true);
+    const lat = numberInput("lat",-70,70);
+    const lon = numberInput("lon",-180,180);
+    const limits = yearLimits(year);
+    const pvFile = $("pvFile").files[0];
+    const priceFile = $("priceFile").files[0];
+
+    if(!pvFile && !priceFile){
+      fail("Selecciona al menos un archivo: FV o precios.");
+    }
+
+    const pvData = await readFile(pvFile);
+    const priceData = await readFile(priceFile);
+    const pv = pvData === null ? null : parsePV(
+      pvData.text,year,lat,lon,$("mapMinutes").checked
+    );
+    const prices = priceData === null ? null : parsePrices(
+      priceData.text,year,$("priceSource").value,$("aggregate").checked
+    );
+
+    $("summary").textContent =
+      "Calendarios comprobados. Generando CSV y expediente…";
+
+    const headers = ["fecha_utc"];
+    if(pv) headers.push("solar");
+    if(prices) headers.push("precio_eur_mwh");
+    const rows = [headers.join(";")];
+
+    for(let i=0;i<limits.count;i++){
+      const row = [new Date(limits.start+i*HOUR).toISOString()];
+      if(pv) row.push(String(pv.values[i]));
+      if(prices) row.push(String(prices.values[i]));
+      rows.push(row.join(";"));
+    }
+
+    const csv = "\uFEFF"+rows.join("\r\n");
+    const exportedBytes = new TextEncoder().encode(csv);
+    const hashes = {
+      algorithm:"SHA-256",
+      scope:
+        "Archivos originales: bytes exactos; CSV exportado: bytes UTF-8 incluidos BOM y CRLF",
+      originalPV:pvData ? await hashBytes(pvData.bytes) : null,
+      originalPrices:priceData ? await hashBytes(priceData.bytes) : null,
+      exportedCSV:await hashBytes(exportedBytes)
+    };
+    const hashUnavailable =
+      hashes.exportedCSV === null ||
+      (pvData !== null && hashes.originalPV === null) ||
+      (priceData !== null && hashes.originalPrices === null);
+
+    const dossier = {
+      schema:"h2verde-resources-1",
+      toolRevision:"correccion-sintaxis-1",
+      generatedAt:new Date().toISOString(),
+      calendar:{
+        year,zone:"UTC",intervalMinutes:60,
+        intervals:limits.count,
+        start:new Date(limits.start).toISOString(),
+        endExclusive:new Date(limits.end).toISOString()
+      },
+      location:pv ? {latitude:lat,longitude:lon} : null,
+      files:{
+        pvgis:pvData ? {name:pvData.name,sizeBytes:pvData.size} : null,
+        prices:priceData ? {name:priceData.name,sizeBytes:priceData.size} : null
+      },
+      solar:pv ? pv.metadata : null,
+      prices:prices ? prices.metadata : null,
+      hashes,
+      hashWarning:hashUnavailable
+        ? "No se han podido calcular todos los hashes. No se afirma integridad verificada."
+        : null,
+      originals:{
+        pvgisJSON:pv ? pv.original : null,
+        pricesCSV:prices ? prices.originalCSV : null
+      },
+      applicationInstructions:{
+        target:
+          "Importador horario UTC propuesto para H₂ Verde 3.2; comprobar disponibilidad",
+        renewableConverterEfficiency:pv
+          ? "100 % para no duplicar pérdidas del perfil PVGIS"
+          : "Según perímetro del recurso",
+        solarScaling:
+          "Perfil normalizado por kWp; declarar la potencia FV del proyecto en kWp",
+        provenance:
+          "Indicar el nombre de este expediente en la procedencia del CSV",
+        warning:
+          "No mezclar perímetros eléctricos distintos de FV y eólica",
+        limitation:
+          "Prefactibilidad; no certificación ni validación experimental"
+      }
+    };
+
+    prepared = {csv,dossier,year};
+    $("csv").disabled = false;
+    $("dossier").disabled = false;
+    $("summary").textContent =
+      "Recursos preparados.\n" +
+      "Año: " + year + " UTC\n" +
+      "Intervalos: " + limits.count + "\n" +
+      "FV: " + (pv ? "PVGIS modelada" : "No incorporada") + "\n" +
+      "Precios: " + (prices ? "Con procedencia declarada" : "No incorporados") + "\n" +
+      (pv
+        ? "Marcas FV asignadas a su hora: " +
+          pv.metadata.minuteRecordsAssignedToHour + "\n"
+        : "") +
+      "Hashes: " + (hashUnavailable ? "No disponibles o incompletos" : "Calculados") + "\n" +
+      "\nDescarga tanto el CSV como el expediente.\n" +
+      (pv ? "Evita duplicar las pérdidas incluidas en PVGIS.\n" : "") +
+      "La importación en H₂ Verde depende de su versión y formato admitido.";
+
+    if(hashUnavailable){
+      $("error").textContent =
+        "Aviso: no se han calculado todos los hashes. " +
+        "Los archivos pueden descargarse, pero esta exportación " +
+        "no tiene todos los identificadores SHA-256.";
+    }
+  }catch(error){
+    $("error").textContent = error.message || String(error);
+    $("summary").textContent = "No se han preparado recursos.";
+  }finally{
+    setBusy(false);
+  }
+});
+
+$("csv").addEventListener("click",() => {
+  if(!prepared) return;
+  download(
+    "h2verde-recursos-"+prepared.year+".csv",
+    prepared.csv,
+    "text/csv;charset=utf-8"
+  );
+});
+
+$("dossier").addEventListener("click",() => {
+  if(!prepared) return;
+  download(
+    "h2verde-recursos-"+prepared.year+"-procedencia.json",
+    JSON.stringify(prepared.dossier,null,2),
+    "application/json;charset=utf-8"
+  );
+});
+
+$("runtime").className = "ready";
+$("runtime").textContent =
+  "JavaScript iniciado · Corrección de sintaxis 1.";
+$("prepare").disabled = false;
+$("request").disabled = false;
+</script>
+</body>
+</html>
